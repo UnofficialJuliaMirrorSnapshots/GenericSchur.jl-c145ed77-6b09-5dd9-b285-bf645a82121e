@@ -6,8 +6,8 @@ import LinearAlgebra: lmul!, mul!, checksquare
 
 # This is the public interface of the package.
 # Wrappers like `schur` and `eigvals` should just work.
-import LinearAlgebra: schur!, eigvals!, eigvecs
-export triangularize, eigvalscond, subspacesep
+import LinearAlgebra: schur!, eigvals!, eigvecs, eigen!
+export triangularize, eigvalscond, subspacesep, balance!
 
 schur!(A::StridedMatrix{T}; kwargs...) where {T} = gschur!(A; kwargs...)
 
@@ -31,6 +31,46 @@ function eigvecs(S::Schur{T}; left::Bool=false) where {T <: Complex}
     v
 end
 
+if VERSION < v"1.2-"
+    eigsortby = nothing
+else
+    using LinearAlgebra: eigsortby, sorteig!
+end
+
+function eigen!(A::StridedMatrix{T}; permute=true, scale=true,
+                sortby::Union{Function,Nothing}=eigsortby) where {T <: Real}
+    if permute || scale
+        A, B = balance!(A, scale=scale, permute=permute)
+    end
+    S = triangularize(schur(A))
+    v = eigvecs(S)
+    if permute || scale
+        lmul!(B, v)
+    end
+    if sortby !== nothing
+        return LinearAlgebra.Eigen(sorteig!(S.values, v, sortby)...)
+    else
+        return LinearAlgebra.Eigen(S.values,v)
+    end
+end
+
+function eigen!(A::StridedMatrix{T}; permute::Bool=true, scale::Bool=true,
+                sortby::Union{Function,Nothing}=eigsortby) where {T <: Complex}
+    if permute || scale
+        A, B = balance!(A, scale=scale, permute=permute)
+    end
+    S = schur(A)
+    v = eigvecs(S)
+    if permute || scale
+        lmul!(B, v)
+    end
+    if sortby !== nothing
+        return LinearAlgebra.Eigen(sorteig!(S.values, v, sortby)...)
+    else
+        return LinearAlgebra.Eigen(S.values,v)
+    end
+end
+
 ############################################################################
 # Internal implementation follows
 
@@ -38,6 +78,7 @@ end
 include("util.jl")
 include("hessenberg.jl")
 include("householder.jl")
+include("balance.jl")
 
 function _gschur!(H::HessenbergFactorization{T}, Z=nothing;
                  debug = false,
