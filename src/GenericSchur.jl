@@ -2,7 +2,7 @@ module GenericSchur
 using LinearAlgebra
 using LinearAlgebra: Givens, Rotation
 using Printf
-import LinearAlgebra: lmul!, mul!, checksquare
+import LinearAlgebra: lmul!, mul!, checksquare, ldiv!
 
 # This is the public interface of the package.
 # Wrappers like `schur` and `eigvals` should just work.
@@ -715,5 +715,7 @@ include("triang.jl")
 include("norm1est.jl")
 include("sylvester.jl")
 include("ordschur.jl")
+
+include("generalized.jl")
 
 end # module
